@@ -1,7 +1,11 @@
 #!/bin/zsh
 # shellcheck shell=bash
 
-# quitapps v0.1
+# quitapps v0.1.1
+
+export LANG=en_US.UTF-8
+export SYSTEM_VERSION_COMPAT=0
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/local/bin:/opt/sw/bin:/sw/bin
 
 config_dir="$HOME/.config/quitapps"
 ! [[ -d "$config_dir" ]] && mkdir -p "$config_dir"
@@ -59,7 +63,7 @@ EOB
 
 _help () {
 	read -d '' helpdoc <<"EOW"
-quitapps v0.1
+quitapps v0.1.1
 
 Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background process specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
 
@@ -197,11 +201,16 @@ if $quitfg ; then
 			if [[ $terminal_emulator == "Apple_Terminal" ]] ; then
 				whitelist=$(echo -e "$whitelist\nTerminal")
 			else
-				whitelist=$(echo -e "$whitelist\n$terminal_emulator")
 				term_path=$(mdfind "kMDItemDisplayName == \"$terminal_emulator.app\"" 2>/dev/null | LC_COLLATE=C sort | head -1)
 				if [[ $term_path ]] ; then
 					term_exe=$(defaults read "$term_path"/Contents/Info.plist CFBundleExecutable 2>/dev/null)
-					[[ $term_exe ]] && whitelist=$(echo -e "$whitelist\n$term_exe")
+					if [[ $term_exe ]] ; then
+						whitelist=$(echo -e "$whitelist\n$term_exe")
+					else
+						whitelist=$(echo -e "$whitelist\n$terminal_emulator")
+					fi
+				else
+					whitelist=$(echo -e "$whitelist\n$terminal_emulator")
 				fi
 			fi
 		fi
