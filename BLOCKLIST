@@ -1,0 +1,44 @@
+# FOREGROUND APPLICATIONS
+
+Finder
+
+# BACKGROUND APPLICATIONS & PROCESSES
+
+AirPlayUIAgent
+AppSSOAgent
+ControlStrip
+coreautha
+CoreLocationAgent
+CoreServicesUIAgent
+Dock
+EmojiFunctionRowIM_Extension
+FolderActionsDispatcher
+FrontendAgent
+fsctelemetryd
+imklaunchagent
+LocationMenu
+loginwindow
+MirrorDisplays
+nbagent
+NotificationCenter
+open
+osascript
+OSDUIHelper
+PAH_Extension
+plugin-container
+PowerChime
+QuickLaunch
+QuickLookUIService
+SimulatorTrampoline
+SoftwareUpdateNotificationManager
+SpeechSynthesisServer
+Spotlight
+storeuid
+studentd
+System Events
+SystemUIServer
+talagent
+TextInputMenuAgent
+universalAccessAuthWarn
+ViewBridgeAuxiliary
+WiFiAgent

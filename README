@@ -1,0 +1,38 @@
+quitapps v0.1
+
+Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background process specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
+
+	quitapps
+		quit all foreground applications (except whitelisted) & blacklisted background processes
+	
+	ARGUMENTS
+		quitapps all
+			same as 'quitapps'
+	
+		quitapps fg	
+			quit only foreground applications (all except those specifically whitelisted by the user plus Finder and the terminal emulator)
+	
+		quitapps bg
+			quit only background processes (only those specifically blacklisted by the user)
+	
+		quitapps list
+			list all currently running foreground applications & background processes (except Finder & certain macOS userland processes)
+	
+		quitapps list fg
+			list only the currently running foreground applications (except Finder)
+	
+		quitapps list bg
+			list only the currently running background processes (except certain macOS userland processes)
+	
+		quitapps init
+			create blank whitelist and blacklist files in the configuration directory
+		
+		quitapps help
+			this help document
+	
+NOTES
+	Whitelist foreground applications in:	~/.config/quitapps/whitelist-foreground.txt		
+	Blacklist background processes in:	~/.config/quitapps/blacklist-background.txt
+
+
+See also the BLOCKLIST file

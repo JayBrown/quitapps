@@ -1,0 +1,319 @@
+#!/bin/zsh
+# shellcheck shell=bash
+
+# quitapps v0.1
+
+config_dir="$HOME/.config/quitapps"
+! [[ -d "$config_dir" ]] && mkdir -p "$config_dir"
+fgwhitelist_loc="$config_dir/whitelist-foreground.txt"
+! [[ -f "$fgwhitelist_loc" ]] && touch "$fgwhitelist_loc"
+bgblacklist_loc="$config_dir/blacklist-background.txt"
+! [[ -f "$bgblacklist_loc" ]] && touch "$bgblacklist_loc"
+
+[[ $1 == "init" ]] && exit
+
+read -d '' whitelist <<"EOW"
+Finder
+EOW
+
+read -d '' blocklist <<"EOB"
+AirPlayUIAgent
+AppSSOAgent
+ControlStrip
+coreautha
+CoreLocationAgent
+CoreServicesUIAgent
+Dock
+EmojiFunctionRowIM_Extension
+FolderActionsDispatcher
+FrontendAgent
+fsctelemetryd
+imklaunchagent
+LocationMenu
+loginwindow
+MirrorDisplays
+nbagent
+NotificationCenter
+open
+osascript
+OSDUIHelper
+PAH_Extension
+plugin-container
+PowerChime
+QuickLaunch
+QuickLookUIService
+SimulatorTrampoline
+SoftwareUpdateNotificationManager
+SpeechSynthesisServer
+Spotlight
+storeuid
+studentd
+System Events
+SystemUIServer
+talagent
+TextInputMenuAgent
+universalAccessAuthWarn
+ViewBridgeAuxiliary
+WiFiAgent
+EOB
+
+_help () {
+	read -d '' helpdoc <<"EOW"
+quitapps v0.1
+
+Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background process specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
+
+	quitapps
+		quit all foreground applications (except whitelisted) & blacklisted background processes
+	
+	ARGUMENTS
+		quitapps all
+			same as 'quitapps'
+	
+		quitapps fg	
+			quit only foreground applications (all except those specifically whitelisted by the user plus Finder and the terminal emulator)
+	
+		quitapps bg
+			quit only background processes (only those specifically blacklisted by the user)
+	
+		quitapps list
+			list all currently running foreground applications & background processes (except Finder & certain macOS userland processes)
+	
+		quitapps list fg
+			list only the currently running foreground applications (except Finder)
+	
+		quitapps list bg
+			list only the currently running background processes (except certain macOS userland processes)
+	
+		quitapps init
+			create blank whitelist and blacklist files in the configuration directory
+		
+		quitapps help
+			this help document
+	
+NOTES
+	Whitelist foreground applications in:	~/.config/quitapps/whitelist-foreground.txt		
+	Blacklist background processes in:	~/.config/quitapps/blacklist-background.txt
+EOW
+	echo "$helpdoc"
+}
+
+if [[ $* ]] ; then
+	if [[ $1 == "help" ]] || [[ $1 == "--help" ]] || [[ $1 == "-h" ]] ; then
+		_help
+		exit
+	elif [[ $1 == all ]] ; then
+		quitbg=true
+		quitfg=true
+	elif [[ $1 == "bg" ]] ; then
+		quitbg=true
+		quitfg=false
+	elif [[ $1 == "fg" ]] ; then
+		quitbg=false
+		quitfg=true
+	elif [[ $1 == "list" ]] ; then
+		if [[ $2 == "fg" ]] ; then
+			listfg=true
+			listbg=false
+		elif [[ $2 == "bg" ]] ; then
+			listfg=false
+			listbg=true
+		else
+			listfg=true
+			listbg=true
+		fi
+		if $listfg ; then
+			fgapps=$(osascript -e 'tell application "System Events" to get name of (processes where background only is false)')
+			IFS=',' read -r -A openapps <<< "$fgapps"
+			$listbg && echo -e "*** Foreground applications ***\n"
+			fgapplist=""
+			for app in "${openapps[@]}"
+			do
+				app=$(echo "$app" | sed 's/^ *//')
+				if [[ $fgapplist ]] ; then
+					fgapplist=$(echo -e "$fgapplist\n$app")
+				else
+					fgapplist="$app"
+				fi
+			done
+			while read -r whitelisted
+			do
+				fgapplist=$(echo "$fgapplist" | grep -v "^$whitelisted$")
+			done < <(echo "$whitelist")
+			fgapplist=$(echo -e "$fgapplist" | sort -f | awk '!a[$0]++')
+			echo "$fgapplist"
+		fi
+		if $listbg ; then
+			bgapps=$(osascript -e 'tell application "System Events" to get name of (processes where background only is true)')
+			IFS=',' read -r -A openprocs <<< "$bgapps"
+			$listfg && echo -e "\n*** Background applications & processes ***\n"
+			bgproclist=""
+			for process in "${openprocs[@]}"
+			do
+				process=$(echo "$process" | sed 's/^ *//')
+				if [[ $bgproclist ]] ; then
+					bgproclist=$(echo -e "$bgproclist\n$process")
+				else
+					bgproclist="$process"
+				fi
+			done
+			while read -r blocked
+			do
+				bgproclist=$(echo "$bgproclist" | grep -v "^$blocked$")
+			done < <(echo "$blocklist")
+			bgproclist=$(echo -e "$bgproclist" | sort -f | grep -v "^com\.apple\." | awk '!a[$0]++')
+			echo "$bgproclist"
+		fi
+		exit
+	else
+		echo "Unknown argument: $1" >&2
+		_help
+		exit 1
+	fi
+else
+	quitbg=true
+	quitfg=true
+fi
+
+read -d '' killsigs <<"EOK"
+3;QUIT
+15;TERM
+6;ABRT
+1;HUP
+14;ALRM
+2;INT
+9;KILL
+EOK
+
+if $quitfg ; then
+	case $(ps -o stat= -p $$) in
+		*+*) background=false ;;
+		*) background=true ;;
+	esac
+
+	if ! $background ; then
+		terminal_emulator=$(echo "$TERM_PROGRAM" | sed 's/\.app$//')
+		if [[ $terminal_emulator ]] ; then
+			if [[ $terminal_emulator == "Apple_Terminal" ]] ; then
+				whitelist=$(echo -e "$whitelist\nTerminal")
+			else
+				whitelist=$(echo -e "$whitelist\n$terminal_emulator")
+				term_path=$(mdfind "kMDItemDisplayName == \"$terminal_emulator.app\"" 2>/dev/null | LC_COLLATE=C sort | head -1)
+				if [[ $term_path ]] ; then
+					term_exe=$(defaults read "$term_path"/Contents/Info.plist CFBundleExecutable 2>/dev/null)
+					[[ $term_exe ]] && whitelist=$(echo -e "$whitelist\n$term_exe")
+				fi
+			fi
+		fi
+	fi
+
+	local_fgwhitelist=$(cat "$fgwhitelist_loc" 2>/dev/null | grep -v "^$" | sed -e 's/^ *//g' -e 's/ *$//g')
+	if [[ $local_fgwhitelist ]] ; then
+		whitelist=$(echo -e "$whitelist\n$local_fgwhitelist" | sort -f)
+	else
+		whitelist=$(echo "$whitelist" | sort -f)
+	fi
+
+	fgapps=$(osascript -e 'tell application "System Events" to get name of (processes where background only is false)')
+
+	IFS=',' read -r -A openapps <<< "$fgapps"
+
+	for app in "${openapps[@]}"
+	do
+		appname=$(echo "$app" | sed 's/^ *//g')
+		pid=$(pgrep -nx "$appname")
+		if echo "$whitelist" | grep -q "^$appname$" &>/dev/null ; then
+			if [[ $pid ]] ; then
+				echo -e "Whitelisted: $appname (PID: $pid)\nSkipping..."
+			else
+				echo -e "Whitelisted: $appname (PID: -)\nSkipping..."
+			fi
+			continue
+		fi
+		if [[ $pid ]] ; then
+			echo "Quitting with 'osascript': $appname (PID: $pid)"
+		else
+			echo "Quitting with 'osascript': $appname (PID: -)"
+		fi
+		if ! osascript -e 'tell application "'"$appname"'" to quit' &>/dev/null ; then
+			if ! [[ $pid ]] ; then
+				echo "ERROR: trying 'killall'..."
+				if ! killall "$appname" &>/dev/null ; then
+					echo "ERROR: could not quit $appname"
+				else
+					echo "Success"
+				fi
+			else
+				while read -r killsig
+				do
+					sig=$(echo "$killsig" | awk -F";" '{print $1}')
+					sigv=$(echo "$killsig" | awk -F";" '{print $2}')
+					echo "ERROR: trying 'kill $sigv'..."
+					if kill -n "$sig" "$pid" &>/dev/null ; then
+						echo "Success"
+						break
+					fi
+				done < <(echo "$killsigs")
+			fi
+		else
+			echo "Success"
+		fi
+	done
+fi
+
+if $quitbg ; then
+	blacklist=$(cat "$bgblacklist_loc" 2>/dev/null | grep -v "^$" | sed -e 's/^ *//g' -e 's/ *$//g' | sort -f)
+	if [[ $blacklist ]] ; then
+		while read -r blocked
+		do
+			blacklist=$(echo "$blacklist" | grep -v "^$blocked$")
+		done < <(echo "$blocklist")
+		blacklist=$(echo "$blacklist" | grep -v -e "^$" -e "^com\.apple\.")
+		if ! [[ $blacklist ]] ; then
+			echo "No blacklist content: skipping background processes" >&2
+			exit
+		fi
+	else
+		echo "No blacklist content: skipping background processes" >&2
+		exit
+	fi
+
+	bgapps=$(osascript -e 'tell application "System Events" to get name of (processes where background only is true)')
+
+	IFS=',' read -r -A openprocs <<< "$bgapps"
+
+	for process in "${openprocs[@]}"
+	do
+		procname=$(echo "$process" | sed 's/^ *//g')
+		! echo "$blacklist" | grep -q "^$procname$" &>/dev/null && continue
+		pid=$(pgrep -nx "$procname")
+		if [[ $pid ]] ; then
+			echo "Quitting with 'osascript': $procname (PID: $pid)"
+		else
+			echo "Quitting with 'osascript': $procname (PID: -)"
+		fi
+		if ! osascript -e 'tell application "'"$procname"'" to quit' &>/dev/null ; then
+			if ! [[ $pid ]] ; then
+				echo "ERROR: trying 'killall'..."
+				if ! killall "$procname" &>/dev/null ; then
+					echo "ERROR: could not quit $procname"
+				else
+					echo "Success"
+				fi
+			else
+				while read -r killsig
+				do
+					sig=$(echo "$killsig" | awk -F";" '{print $1}')
+					sigv=$(echo "$killsig" | awk -F";" '{print $2}')
+					echo "ERROR: trying 'kill $sigv'..."
+					if kill -n "$sig" "$pid" &>/dev/null ; then
+						echo "Success"
+						break
+					fi
+				done < <(echo "$killsigs")
+			fi
+		else
+			echo "Success"
+		fi
+	done
+fi
