@@ -1,7 +1,7 @@
 #!/bin/zsh
 # shellcheck shell=bash
 
-# quitapps v0.1.1
+# quitapps v0.1.2
 
 export LANG=en_US.UTF-8
 export SYSTEM_VERSION_COMPAT=0
@@ -63,7 +63,7 @@ EOB
 
 _help () {
 	read -d '' helpdoc <<"EOW"
-quitapps v0.1.1
+quitapps v0.1.2
 
 Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background process specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
 
@@ -231,6 +231,7 @@ if $quitfg ; then
 	do
 		appname=$(echo "$app" | sed 's/^ *//g')
 		pid=$(pgrep -nx "$appname")
+		! [[ $pid ]] && pid=$(ps aux | grep "/$appname$" | grep -v "grep" | head -1 | awk '{print $2}')
 		if echo "$whitelist" | grep -q "^$appname$" &>/dev/null ; then
 			if [[ $pid ]] ; then
 				echo -e "Whitelisted: $appname (PID: $pid)\nSkipping..."
@@ -296,6 +297,7 @@ if $quitbg ; then
 		procname=$(echo "$process" | sed 's/^ *//g')
 		! echo "$blacklist" | grep -q "^$procname$" &>/dev/null && continue
 		pid=$(pgrep -nx "$procname")
+		! [[ $pid ]] && pid=$(ps aux | grep "/$procname$" | grep -v "grep" | head -1 | awk '{print $2}')
 		if [[ $pid ]] ; then
 			echo "Quitting with 'osascript': $procname (PID: $pid)"
 		else
