@@ -42,3 +42,6 @@ TextInputMenuAgent
 universalAccessAuthWarn
 ViewBridgeAuxiliary
 WiFiAgent
+
+# ADDITIONAL PROCESSES
+anything with "com.apple." in the name

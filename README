@@ -1,6 +1,6 @@
 quitapps v0.1.2
 
-Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background process specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
+Quit (or kill on error) all foreground applications, except those specifically whitelisted by the user, or all background processes specifically blacklisted by the user; only applications and processes currently run by the logged-in user will be handled; certain macOS userland processes will always be ignored, e.g. Finder, Dock or Spotlight etc.; if quitapps is run in a terminal emulator, the app will (hopefully) be auto-whitelisted against quit.
 
 	quitapps
 		quit all foreground applications (except whitelisted) & blacklisted background processes
